@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "feedback-bot"
+version = "0.1.0"
+description = "Telegram Feedback Bot"
+authors = ["Dmitry <dmitrydavis@protonmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+aiogram = "^2.13"
+
+[tool.poetry.dev-dependencies]
+black = "^21.6b0"
+isort = "^5.8.0"
+
+[tool.black]
+target_version = ['py39']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
