@@ -1,4 +1,4 @@
-FROM python:3.9 as deps
+FROM python:3.9-slim-buster as deps
 ENV POETRY_VIRTUALENVS_IN_PROJECT true
 WORKDIR /opt
 RUN pip install poetry
@@ -6,7 +6,7 @@ COPY pyproject.toml ./
 COPY poetry.lock ./
 RUN poetry install --no-dev
 
-FROM python:3.9
+FROM python:3.9-slim-buster
 RUN useradd appuser
 USER appuser
 VOLUME "/data"
