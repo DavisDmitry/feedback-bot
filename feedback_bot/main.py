@@ -6,11 +6,13 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters import IDFilter
 
 from feedback_bot import utils
+from feedback_bot.chat_repository import AbstractChatRepository
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 TOKEN = os.environ["BOT_TOKEN"]
 DOMAIN = os.environ["BOT_DOMAIN"]
 ADMIN_ID = int(os.environ["ADMIN_ID"])
+DEFAULT_CHAT_ID = int(os.getenv("DEFAULT_CHAT_ID", ADMIN_ID))
 TEXTS_PATH = os.getenv("TEXTS_PATH", "/data")
 WH_PATH = "/" + utils.generate_random_string()
 
@@ -23,17 +25,17 @@ dp = Dispatcher(bot)
 
 
 @dp.message_handler(commands=("start", "help"))
-async def start_help(msg: types.Message):
+async def handle_start_and_help_commands(msg: types.Message):
     await msg.answer(msg.bot.data.get("texts").get("start"))
 
 
 @dp.message_handler(
-    IDFilter(chat_id=ADMIN_ID),
+    IDFilter(chat_id=DEFAULT_CHAT_ID),
     content_types=types.ContentType.ANY,
     run_task=True,
     is_reply=True,
 )
-async def reply_from_admin(msg: types.Message):
+async def handle_reply_from_admin(msg: types.Message):
     entities = msg.reply_to_message.entities
 
     if not len(entities) == 1 or not str(entities[0].type) == "hashtag":
@@ -51,9 +53,44 @@ async def reply_from_admin(msg: types.Message):
     await msg_to_delete.delete()
 
 
-@dp.message_handler(content_types=types.ContentType.ANY, run_task=True)
-async def msg_from_user(msg: types.Message):
-    msg_to_reply = await msg.forward(ADMIN_ID)
+@dp.message_handler(IDFilter(user_id=ADMIN_ID), regexp=r"/link .*")
+async def handle_set_command_from_admin(msg: types.Message):
+    try:
+        user_id = int(msg.text.split(" ", 1)[1])
+    except (IndexError, ValueError):
+        # TODO: add getting text from messages.yml
+        return await msg.reply(
+            "Invalid command. It should be <code>/link <USER ID></code>."
+        )
+
+    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+
+    if await chat_repo.get_by_chat_id(msg.chat.id):
+        # TODO: add getting text from messages.yml
+        return await msg.reply("This chat using for communication with another user.")
+
+    if await chat_repo.get_by_user_id(user_id):
+        # TODO: add getting text from messages.yml
+        return await msg.reply(
+            "A chat already exists for communicating with this user."
+        )
+
+    await chat_repo.create_chat(msg.chat.id, user_id)
+    # TODO: add getting text from messages.yml
+    await msg.reply(
+        "The chat has been successfully linked to the user with id "
+        f"<code>{user_id}</code>."
+    )
+
+
+@dp.message_handler(
+    chat_type=types.ChatType.PRIVATE, content_types=types.ContentType.ANY, run_task=True
+)
+async def handle_message_from_user(msg: types.Message):
+    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    admin_chat_to_forward = await chat_repo.get_by_user_id(msg.chat.id)
+    chat_to_forward = admin_chat_to_forward if admin_chat_to_forward else ADMIN_ID
+    msg_to_reply = await msg.forward(chat_to_forward)
     msg_to_delete = await msg.reply(msg.bot.data.get("texts").get("forwarded_to_owner"))
     await msg_to_reply.reply(f"Message from #ID{msg.from_user.id}")
     await asyncio.sleep(5)
