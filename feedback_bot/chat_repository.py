@@ -7,7 +7,7 @@ from feedback_bot.models import Chat
 class AbstractChatRepository(ABC):
     def __init__(self):
         pass
-    
+
     @abstractmethod
     async def get_by_chat_id(self) -> Optional[Chat]:
         pass
