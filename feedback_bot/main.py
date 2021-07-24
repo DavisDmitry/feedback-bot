@@ -53,8 +53,10 @@ async def handle_reply_from_admin(msg: types.Message):
     await msg_to_delete.delete()
 
 
-@dp.message_handler(IDFilter(user_id=ADMIN_ID), regexp=r"/link .*")
-async def handle_set_command_from_admin(msg: types.Message):
+@dp.message_handler(
+    IDFilter(user_id=ADMIN_ID), regexp=r"/link .*", chat_type=types.ChatType.GROUP
+)
+async def handle_link_command_from_admin(msg: types.Message):
     try:
         user_id = int(msg.text.split(" ", 1)[1])
     except (IndexError, ValueError):
@@ -84,6 +86,17 @@ async def handle_set_command_from_admin(msg: types.Message):
 
 
 @dp.message_handler(
+    IDFilter(user_id=ADMIN_ID), commands="unlink", chat_type=types.ChatType.GROUP
+)
+async def handle_unlink_command_from_admin(msg: types.Message):
+    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    if not await chat_repo.is_admin_chat(msg.chat.id):
+        return
+
+    await chat_repo.remove_by_chat_id(msg.chat.id)
+
+
+@dp.message_handler(
     chat_type=types.ChatType.PRIVATE, content_types=types.ContentType.ANY, run_task=True
 )
 async def handle_message_from_user(msg: types.Message):
@@ -95,6 +108,18 @@ async def handle_message_from_user(msg: types.Message):
     await msg_to_reply.reply(f"Message from #ID{msg.from_user.id}")
     await asyncio.sleep(5)
     await msg_to_delete.delete()
+
+
+@dp.my_chat_member_handler(chat_type=types.ChatType.GROUP)
+async def handle_bot_removed_from_group(cmu: types.ChatMemberUpdated):
+    if cmu.new_chat_member.status != "left":
+        return
+
+    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    if not await chat_repo.is_admin_chat(cmu.chat.id):
+        return
+
+    await chat_repo.remove_by_chat_id(cmu.chat.id)
 
 
 async def on_startup(dp: Dispatcher):
