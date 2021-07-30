@@ -1,17 +1,19 @@
 import asyncio
 import logging
 import os
+import sqlite3 as sqlite
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters import IDFilter
 
 from feedback_bot import utils
-from feedback_bot.chat_repository import AbstractChatRepository
+from feedback_bot.chat_repository import SQLiteChatRepository as ChatRepository
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 TOKEN = os.environ["BOT_TOKEN"]
 DOMAIN = os.environ["BOT_DOMAIN"]
 ADMIN_ID = int(os.environ["ADMIN_ID"])
+DATABASE_PATH = os.environ["DATABASE_PATH"]
 DEFAULT_CHAT_ID = int(os.getenv("DEFAULT_CHAT_ID", ADMIN_ID))
 TEXTS_PATH = os.getenv("TEXTS_PATH", "/data")
 WH_PATH = "/" + utils.generate_random_string()
@@ -65,9 +67,9 @@ async def handle_link_command_from_admin(msg: types.Message):
             "Invalid command. It should be <code>/link <USER ID></code>."
         )
 
-    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    chat_repo = ChatRepository(msg.bot.data["db_conn"])
 
-    if await chat_repo.get_by_chat_id(msg.chat.id):
+    if await chat_repo.is_admin_chat(msg.chat.id):
         # TODO: add getting text from messages.yml
         return await msg.reply("This chat using for communication with another user.")
 
@@ -77,7 +79,7 @@ async def handle_link_command_from_admin(msg: types.Message):
             "A chat already exists for communicating with this user."
         )
 
-    await chat_repo.create_chat(msg.chat.id, user_id)
+    await chat_repo.create(msg.chat.id, user_id)
     # TODO: add getting text from messages.yml
     await msg.reply(
         "The chat has been successfully linked to the user with id "
@@ -89,7 +91,7 @@ async def handle_link_command_from_admin(msg: types.Message):
     IDFilter(user_id=ADMIN_ID), commands="unlink", chat_type=types.ChatType.GROUP
 )
 async def handle_unlink_command_from_admin(msg: types.Message):
-    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    chat_repo = ChatRepository(msg.bot.data["db_conn"])
     if not await chat_repo.is_admin_chat(msg.chat.id):
         return
 
@@ -100,7 +102,7 @@ async def handle_unlink_command_from_admin(msg: types.Message):
     chat_type=types.ChatType.PRIVATE, content_types=types.ContentType.ANY, run_task=True
 )
 async def handle_message_from_user(msg: types.Message):
-    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    chat_repo = ChatRepository(msg.bot.data["db_conn"])
     admin_chat_to_forward = await chat_repo.get_by_user_id(msg.chat.id)
     chat_to_forward = admin_chat_to_forward if admin_chat_to_forward else ADMIN_ID
     msg_to_reply = await msg.forward(chat_to_forward)
@@ -115,7 +117,7 @@ async def handle_bot_removed_from_group(cmu: types.ChatMemberUpdated):
     if cmu.new_chat_member.status != "left":
         return
 
-    chat_repo = AbstractChatRepository()  # TODO: replace this with implementation
+    chat_repo = ChatRepository(cmu.bot.data["db_conn"])
     if not await chat_repo.is_admin_chat(cmu.chat.id):
         return
 
@@ -129,6 +131,9 @@ async def on_startup(dp: Dispatcher):
     for key in keys:
         with open(f"{path}/{key}.txt", "r") as file:
             texts[key] = file.read()
+
+    bot.data["db_conn"] = db_conn = sqlite.connect(DATABASE_PATH)
+    ChatRepository(db_conn).create_table()
 
     await dp.bot.set_webhook(DOMAIN + WH_PATH)
 
