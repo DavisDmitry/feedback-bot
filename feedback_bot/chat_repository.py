@@ -36,14 +36,13 @@ class SQLiteChatRepository(AbstractChatRepository):
         self._conn = conn
 
     def create_table(self) -> None:
-        cur = self._conn.cursor()
-        cur.execute(
+        self._conn.execute(
             "CREATE TABLE IF NOT EXISTS chats ("
             "chat_id integer PRIMARY KEY,"
             "user_id integer NOT NULL UNIQUE"
             ");"
         )
-        cur.close()
+        self._conn.commit()
 
     async def get_by_chat_id(self, chat_id: int) -> Optional[Chat]:
         cur = self._conn.cursor()
@@ -67,15 +66,11 @@ class SQLiteChatRepository(AbstractChatRepository):
         return bool(await self.get_by_chat_id(chat_id))
 
     async def create_chat(self, chat_id: int, user_id: int) -> None:
-        cur = self._conn.cursor()
-        cur.execute(
+        self._conn.execute(
             "INSERT INTO chats (chat_id, user_id) VALUES (?, ?)", (chat_id, user_id)
         )
         self._conn.commit()
-        cur.close()
 
     async def remove_by_chat_id(self, chat_id: int) -> None:
-        cur = self._conn.cursor()
-        cur.execute(f"DELETE FROM images WHERE chat_id = {chat_id}")
+        self._conn.execute(f"DELETE FROM images WHERE chat_id = {chat_id}")
         self._conn.commit()
-        cur.close()
