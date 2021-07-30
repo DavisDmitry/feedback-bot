@@ -22,7 +22,7 @@ class AbstractChatRepository(ABC):
         pass
 
     @abstractmethod
-    async def create_chat(self, chat_id: int, user_id: int) -> None:
+    async def create(self, chat_id: int, user_id: int) -> None:
         pass
 
     @abstractmethod
@@ -32,7 +32,7 @@ class AbstractChatRepository(ABC):
 
 class SQLiteChatRepository(AbstractChatRepository):
     def __init__(self, conn: sqlite.Connection):
-        super().__init__(self)
+        super().__init__()
         self._conn = conn
 
     def create_table(self) -> None:
@@ -65,12 +65,12 @@ class SQLiteChatRepository(AbstractChatRepository):
     async def is_admin_chat(self, chat_id: int) -> bool:
         return bool(await self.get_by_chat_id(chat_id))
 
-    async def create_chat(self, chat_id: int, user_id: int) -> None:
+    async def create(self, chat_id: int, user_id: int) -> None:
         self._conn.execute(
             "INSERT INTO chats (chat_id, user_id) VALUES (?, ?)", (chat_id, user_id)
         )
         self._conn.commit()
 
     async def remove_by_chat_id(self, chat_id: int) -> None:
-        self._conn.execute(f"DELETE FROM images WHERE chat_id = {chat_id}")
+        self._conn.execute(f"DELETE FROM chats WHERE chat_id = {chat_id}")
         self._conn.commit()
