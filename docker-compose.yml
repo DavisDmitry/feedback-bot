@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  bot:
+    image: dmitrydavis/feedback-bot:0.1.0
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: INFO
+      BOT_TOKEN: << YOUR BOT TOKEN >>
+      BOT_DOMAIN: bot.dmitrydavis.xyz
+      ADMIN_ID: "1231231234"
+    volumes:
+      - ./data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bot.rule=Host(`bot.dmitrydavis.xyz`)"
+      - "traefik.http.routers.bot.tls=true"
+      - "traefik.http.routers.bot.tls.certresolver=cf"
+      - "traefik.http.routers.bot.entryPoints=web"
+      - "traefik.http.services.bot.loadbalancer.server.port=8080"
