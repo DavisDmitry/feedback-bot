@@ -1,1 +1,0 @@
-📮 Your message has been forwarded to user with id <code>{}</code>.

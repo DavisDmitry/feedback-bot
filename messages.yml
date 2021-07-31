@@ -1,0 +1,7 @@
+start: Hello. I will help you contact my owner. Just send a message and I'll forward it.
+forwarded_to_owner: 📮 Your message has been forwarded to the bot owner.
+forwarded_to_user: 📮 Your message has been forwarded to user with id <code>{user_id}</code>.
+invalid_link_command: Invalid command. It should be <code>/link <USER ID></code>.
+chat_using_for_another_user: This chat using for communication with another user.
+exist_chat_for_this_user: A chat already exists for communicating with this user.
+chat_linked: The chat has been successfully linked to the user with id <code>{user_id}</code>.
