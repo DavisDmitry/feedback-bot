@@ -13,7 +13,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 TOKEN = os.environ["BOT_TOKEN"]
 DOMAIN = os.environ["BOT_DOMAIN"]
 ADMIN_ID = int(os.environ["ADMIN_ID"])
-DATABASE_PATH = os.environ["DATABASE_PATH"]
+DATABASE_PATH = os.getenv("DATABASE_PATH", "/data/database.db")
 DEFAULT_CHAT_ID = int(os.getenv("DEFAULT_CHAT_ID", ADMIN_ID))
 MESSAGES_PATH = os.getenv("MESSAGES_PATH", "/data/messages.yml")
 WH_PATH = "/" + utils.generate_random_string()
@@ -87,16 +87,29 @@ async def handle_unlink_command_from_admin(msg: types.Message):
     await chat_repo.remove_by_chat_id(msg.chat.id)
 
 
+@dp.message_handler(IDFilter(user_id=ADMIN_ID), chat_type=types.ChatType.GROUP)
+async def handle_message_in_admin_group(msg: types.Message):
+    chat_repo = ChatRepository(msg.bot.data["db_conn"])
+    chat_from_db = await chat_repo.get_by_chat_id(msg.chat.id)
+    if not chat_from_db:
+        return
+
+    await msg.copy_to(chat_from_db.user_id)
+
+
 @dp.message_handler(
     chat_type=types.ChatType.PRIVATE, content_types=types.ContentType.ANY, run_task=True
 )
 async def handle_message_from_user(msg: types.Message):
     chat_repo = ChatRepository(msg.bot.data["db_conn"])
     admin_chat_to_forward = await chat_repo.get_by_user_id(msg.chat.id)
-    chat_to_forward = admin_chat_to_forward if admin_chat_to_forward else ADMIN_ID
+    chat_to_forward = (
+        admin_chat_to_forward.chat_id if admin_chat_to_forward else ADMIN_ID
+    )
     msg_to_reply = await msg.forward(chat_to_forward)
     msg_to_delete = await msg.reply(msg.bot.data["messages"]["forwarded_to_owner"])
-    await msg_to_reply.reply(f"Message from #ID{msg.from_user.id}")
+    if not admin_chat_to_forward:
+        await msg_to_reply.reply(f"Message from #ID{msg.from_user.id}")
     await asyncio.sleep(5)
     await msg_to_delete.delete()
 
@@ -120,6 +133,10 @@ async def on_startup(dp: Dispatcher):
     ChatRepository(db_conn).create_table()
 
     await dp.bot.set_webhook(DOMAIN + WH_PATH)
+
+
+async def on_shutdown(dp: Dispatcher):
+    dp.bot.data["db_conn"].close()
 
 
 def main() -> None:
