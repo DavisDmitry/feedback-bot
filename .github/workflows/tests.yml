@@ -26,3 +26,5 @@ jobs:
         run: poetry run black --check --diff .
       - name: Run isort
         run: poetry run isort --check --diff .
+      - name: Run pytest
+        run: poetry run pytest --cov=feedback_bot --cov-report=term-missing
