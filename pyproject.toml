@@ -8,6 +8,7 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = "^3.9"
 aiogram = "^2.13"
+PyYAML = "^5.4.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.6b0"
